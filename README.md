@@ -1,6 +1,6 @@
 # Toy Language
 
-This toy language is a simple programming language is a superset of [BrainFuck](https://en.wikipedia.org/wiki/Brainfuck) implemented in Go.
+This is an interpreter for a superset of [BrainF**k](https://en.wikipedia.org/wiki/Brainfuck) implemented in Go.
 
 ## Usage
 
