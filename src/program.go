@@ -124,10 +124,15 @@ func (p *Program) RunNext() error {
 		p.Memory.Set(p.Network.Receive())
 		return nil
 	}
-	// Sends the byte at the data pointer to the target if set,
-	// if successful sets the byte at the data pointer to `0`
+	// Queues the byte at the data pointer to be sent
 	if instruction == '^' && extNet {
-		if ok := p.Network.Send(p.Memory.Get()); ok {
+		p.Network.QueueSend(p.Memory.Get())
+		return nil
+	}
+	// Sends the queued data to the target port
+	// Sets the data pointer value to `0` is successful
+	if instruction == ';' && extNet {
+		if ok := p.Network.Push(); ok {
 			p.Memory.Set(0)
 		}
 		return nil

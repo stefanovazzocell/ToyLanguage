@@ -38,20 +38,31 @@ To enable a given extensions you must add at the beginning of your file `tl:` fo
 #### Networking
 
 The network extension (code: `net`) enables support for basic TCP communication.
+This extensions listens for connections on `0.0.0.0` and can send data to `127.0.0.1` on ports ranging from `42000` to `42255`.
 
-This extensions listens on `0.0.0.0` and sends to `127.0.0.1` on ports ranging from `42000` to `42255`.
+This extension operates in 3 states internally:
 
-By default a 5 seconds timeout is set and a timeout of 0 indicates no timeout at all.
-If the timeout is reached while sending or receiving, `0` will be written to the data pointer byte. 
+- `idle`: not connected anywhere.
+- `listening`: the user requested a byte from the network.
+- `connected`: the user requested a flush of the send queue OR our listener received a connection. In this state the package can send/receive data.
 
-To connect two computers remotely it is suggested use netcat to forward the connection (ex: `nc -k -l {port} | nc {remote} {port}`).
+The send cache is emptied when a port is set (`@`) or when we switch to the `listening` state.
+Data is received when the status is `connected`, the receive cache is empty, and the user has requested a byte from the network.
+Timeouts default to 5 seconds and apply to the send `;` and receive `?` commands, internal timeouts might be different.
+The best way to close a connection is set the port again.
+
+Further notes:
+
+- To connect two computers remotely it is suggested use netcat to forward the connection (ex: `nc -k -l {port} | nc {remote} {port}`).
+- A successful send is not a guarantee that the receiver got the entire message, if you want that you must write that logic in your code... fun!
 
 | Character | Description |
 |-----------|-------------|
-| `*` | Set the timeout to 0.1 seconds times data pointer byte | 
+| `*` | Set the timeout to 0.1 seconds times the data pointer byte. If 0 will attempt send (`;`) / receive (`?`) operations until successful |
 | `@` | Sets the port to `42000` + the data pointer byte |
-| `^` | Sends a byte to `127.0.0.1:{port}`, sets data pointer byte to `0` if successful |
-| `?` | Listen for a byte on `0.0.0.0:{port}`, saves the byte to the data pointer |
+| `^` | Adds a byte to the send queue. |
+| `;` | Sends to `127.0.0.1:{port}` the data in the send queue in up-to 1024 byte packets. Sets the current byte to 0 is successful, 1 otherwise. |
+| `?` | Save a recived byte from `0.0.0.0:{port}` to the data pointer. |
 
 ## Samples
 
@@ -69,7 +80,6 @@ Here's a list of potential future improvements in non-particular order:
 - [tooling:optimizer] Introduce basic code analysis and optimization
 - [convert:go] Offer to convert to a simple Go program
 - [convert:js] Offer conversion to JavaScript
-- [extension:Network] Persist connections alive for improved performance
 - [extension:Color] Introduce terminal colors (`~`)
 - [extension:MemLoad] APIs to load file into memory and save memory to file (`{`, `}`)
 - [extension:External] Extend beyond this library: allows the user to register callbacks (`_`)

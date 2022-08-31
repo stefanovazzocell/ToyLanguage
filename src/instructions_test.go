@@ -75,6 +75,7 @@ func TestIsValidInstruction(t *testing.T) {
 		'@': true,
 		'?': true,
 		'^': true,
+		';': true,
 	}
 
 	for i := 0; i < 256; i++ {
