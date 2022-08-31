@@ -16,13 +16,13 @@ var (
 )
 
 type Program struct {
-	// Program instructions
-	instructions *Instructions
-	// Program memory
-	memory *Memory
+	// Program Instructions
+	Instructions *Instructions
+	// Program Memory
+	Memory *Memory
 
 	// Network Extension
-	network *Network
+	Network *Network
 
 	// Writer for IO output
 	IOWriter io.Writer
@@ -47,7 +47,7 @@ func (p *Program) Run(limit int) error {
 // Runs the next instruction
 // Returns an error if any
 func (p *Program) RunNext() error {
-	instruction := p.instructions.Pop()
+	instruction := p.Instructions.Pop()
 	if instruction == 0 {
 		return ErrProgramDone
 	}
@@ -56,25 +56,25 @@ func (p *Program) RunNext() error {
 	**/
 	// Increment the data pointer
 	if instruction == '>' {
-		return p.memory.Next()
+		return p.Memory.Next()
 	}
 	// Decrement the data pointer
 	if instruction == '<' {
-		return p.memory.Prev()
+		return p.Memory.Prev()
 	}
 	// Increment (by one) the byte at the data pointer
 	if instruction == '+' {
-		p.memory.Incr()
+		p.Memory.Incr()
 		return nil
 	}
 	// Decrement (by one) the byte at the data pointer
 	if instruction == '-' {
-		p.memory.Decr()
+		p.Memory.Decr()
 		return nil
 	}
 	// Output the value at the data pointer
 	if instruction == '.' {
-		n, err := p.IOWriter.Write([]byte{p.memory.Get()})
+		n, err := p.IOWriter.Write([]byte{p.Memory.Get()})
 		if n != 1 || err != nil {
 			return ErrIoNoOutput
 		}
@@ -87,48 +87,53 @@ func (p *Program) RunNext() error {
 		if n != 1 || err != nil {
 			return ErrIoNoInput
 		}
-		p.memory.Set(b[0])
+		p.Memory.Set(b[0])
 		return nil
 	}
 	// If the data pointer byte is zero, jump to the next corresponding `]`
 	if instruction == '[' {
-		if p.memory.Get() == 0 {
-			p.instructions.JumpForward(']')
+		if p.Memory.Get() == 0 {
+			p.Instructions.JumpForward(']')
 		}
 		return nil
 	}
 	// If the data pointer byte is non-zero, jump to the previous corresponding `[`
 	if instruction == ']' {
-		if p.memory.Get() != 0 {
-			p.instructions.JumpBackward('[')
+		if p.Memory.Get() != 0 {
+			p.Instructions.JumpBackward('[')
 		}
 		return nil
 	}
 	/*
 	* Extension: Network
 	**/
-	extNet := p.instructions.extensions&ExtNet == ExtNet
+	extNet := p.Instructions.extensions&ExtNet == ExtNet
 	// Sets the timeout to the byte at the data pointer times 0.1 seconds
 	if instruction == '*' && extNet {
-		p.network.SetTimeout(p.memory.Get())
+		p.Network.SetTimeout(p.Memory.Get())
 		return nil
 	}
 	// Set the port based on the byte at the data pointer
 	if instruction == '@' && extNet {
-		p.network.SetPort(p.memory.Get())
+		p.Network.SetPort(p.Memory.Get())
 		return nil
 	}
 	// Listen for a message and writes the received value to the byte at the data pointer
 	// On error sets the byte at the data pointer to `0`
 	if instruction == '?' && extNet {
-		p.memory.Set(p.network.Receive())
+		p.Memory.Set(p.Network.Receive())
 		return nil
 	}
-	// Sends the byte at the data pointer to the target if set,
-	// if successful sets the byte at the data pointer to `0`
+	// Queues the byte at the data pointer to be sent
 	if instruction == '^' && extNet {
-		if ok := p.network.Send(p.memory.Get()); ok {
-			p.memory.Set(0)
+		p.Network.QueueSend(p.Memory.Get())
+		return nil
+	}
+	// Sends the queued data to the target port
+	// Sets the data pointer value to `0` is successful
+	if instruction == ';' && extNet {
+		if ok := p.Network.Push(); ok {
+			p.Memory.Set(0)
 		}
 		return nil
 	}
@@ -138,8 +143,8 @@ func (p *Program) RunNext() error {
 
 // Rests memory and the program counter
 func (p *Program) Reset() {
-	p.instructions.Reset()
-	p.memory.Reset()
+	p.Instructions.Reset()
+	p.Memory.Reset()
 }
 
 // Loads a new program (without resetting memory)
@@ -149,18 +154,18 @@ func (p *Program) LoadProgram(r io.Reader) error {
 		return err
 	}
 
-	p.instructions = inst
+	p.Instructions = inst
 	return nil
 }
 
 // Returns true if the given extension is enabled
 func (p Program) HasExtensions(ec ExtensionCode) bool {
-	return p.instructions.extensions&ec == ec
+	return p.Instructions.extensions&ec == ec
 }
 
 // Returns the parsed instructions
 func (p Program) GetInstructions() []byte {
-	return p.instructions.instruction
+	return p.Instructions.instruction
 }
 
 // Returns a new empty program
@@ -171,9 +176,9 @@ func NewProgram(r io.Reader) (Program, error) {
 	}
 
 	return Program{
-		instructions: inst,
-		memory:       NewMemory(),
-		network:      NewNetwork(),
+		Instructions: inst,
+		Memory:       NewMemory(),
+		Network:      NewNetwork(),
 		IOWriter:     os.Stdout,
 		IOReader:     os.Stdin,
 	}, nil

@@ -203,5 +203,5 @@ func IsValidInstruction(b byte, ext ExtensionCode) bool {
 		b == byte('.') || b == byte(',') || // Base: Write/Read Input
 		b == byte('[') || b == byte(']') || // Base: Conditional Loop
 		(ext&ExtNet == ExtNet) && // Extension: Network
-			(b == byte('?') || b == byte('^') || b == byte('@') || b == byte('*')))
+			(b == byte('?') || b == byte('^') || b == byte('@') || b == byte('*') || b == byte(';')))
 }

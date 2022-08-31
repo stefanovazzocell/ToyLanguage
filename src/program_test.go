@@ -16,22 +16,22 @@ func TestProgram(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to load program: %v", err)
 	}
-	if len(p.instructions.instruction) != 6 {
+	if len(p.Instructions.instruction) != 6 {
 		t.Fatal("Failed to load instructions corretly in a new program")
 	}
-	p.memory.Set(11)
-	p.memory.p = 2
-	p.memory.Set(17)
-	p.instructions.pc = 3
+	p.Memory.Set(11)
+	p.Memory.p = 2
+	p.Memory.Set(17)
+	p.Instructions.pc = 3
 	p.Reset()
-	if p.memory.p != 0 || p.instructions.pc != 0 || len(p.memory.Bytes()) != 0 {
-		t.Fatalf("Failed to reset program: %d, %d, %+d", p.memory.p, p.instructions.pc, p.memory.Bytes())
+	if p.Memory.p != 0 || p.Instructions.pc != 0 || len(p.Memory.Bytes()) != 0 {
+		t.Fatalf("Failed to reset program: %d, %d, %+d", p.Memory.p, p.Instructions.pc, p.Memory.Bytes())
 	}
 	if p.HasExtensions(ExtNet) {
 		t.Fatal("Incorrectly reported Network Extension as enabled")
 	}
 	p.LoadProgram(strings.NewReader("tl:neet"))
-	if len(p.instructions.instruction) != 0 {
+	if len(p.Instructions.instruction) != 0 {
 		t.Fatal("Failed to load an empty program")
 	}
 	if p.HasExtensions(ExtNet) {
@@ -48,15 +48,15 @@ func TestRunNext(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to load test program: %v", err)
 		}
-		t.Logf("Parsed %s", string(p.instructions.instruction))
+		t.Logf("Parsed %s", string(p.Instructions.instruction))
 		if err = p.Run(11); err != ErrExecutionLimit {
 			t.Fatalf("Expected ErrExecutionLimit on Run, instead got %v", err)
 		}
 		if err = p.RunNext(); err != ErrProgramDone {
 			t.Fatalf("Expected ErrProgramDone on RunNext, instead got %v", err)
 		}
-		t.Logf("PC: %d, MP: %d", p.instructions.pc, p.memory.p)
-		actualMem := p.memory.Bytes()
+		t.Logf("PC: %d, MP: %d", p.Instructions.pc, p.Memory.p)
+		actualMem := p.Memory.Bytes()
 		expectedMem := []byte{1, 2, 3}
 		if !bytes.Equal(actualMem, expectedMem) {
 			t.Fatalf("Expected %+d, but memory is %+d", expectedMem, actualMem)
@@ -67,12 +67,12 @@ func TestRunNext(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to load test program: %v", err)
 		}
-		t.Logf("Parsed %s", string(p.instructions.instruction))
+		t.Logf("Parsed %s", string(p.Instructions.instruction))
 		if err = p.Run(2 + 5*256 + 4 + 1); err != nil {
 			t.Fatalf("Expected no error on Run, instead got %v", err)
 		}
-		t.Logf("PC: %d, MP: %d", p.instructions.pc, p.memory.p)
-		actualMem := p.memory.Bytes()
+		t.Logf("PC: %d, MP: %d", p.Instructions.pc, p.Memory.p)
+		actualMem := p.Memory.Bytes()
 		expectedMem := []byte{0, 255}
 		if !bytes.Equal(actualMem, expectedMem) {
 			t.Fatalf("Expected %+d, but memory is %s", expectedMem, actualMem)
@@ -83,7 +83,7 @@ func TestRunNext(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to load test program: %v", err)
 		}
-		t.Logf("Parsed %s", string(p.instructions.instruction))
+		t.Logf("Parsed %s", string(p.Instructions.instruction))
 		// Custom writer/reader
 		p.IOReader = strings.NewReader("!")
 		outputBuffer := bytes.NewBuffer(make([]byte, 0, 256))
@@ -92,8 +92,8 @@ func TestRunNext(t *testing.T) {
 		if err = p.Run(1 + 3 + 3*255 + 2 + 1); err != nil {
 			t.Fatalf("Expected no error on Run, instead got %v", err)
 		}
-		t.Logf("PC: %d, MP: %d", p.instructions.pc, p.memory.p)
-		actualMem := p.memory.Bytes()
+		t.Logf("PC: %d, MP: %d", p.Instructions.pc, p.Memory.p)
+		actualMem := p.Memory.Bytes()
 		expectedMem := []byte{0, '!'}
 		if !bytes.Equal(actualMem, expectedMem) {
 			t.Fatalf("Expected %+d, but memory is %+d", expectedMem, actualMem)
@@ -112,34 +112,34 @@ func TestRunNext(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to load test program: %v", err)
 		}
-		t.Logf("Parsed %q", string(p.instructions.instruction))
+		t.Logf("Parsed %q", string(p.Instructions.instruction))
 		for i := 0; i < 3; i++ {
 			if err := p.RunNext(); err != nil {
 				t.Fatalf("Expected no error, instead got %v for %d's instruction", err, i)
 			}
 		}
-		if p.network.timeout != time.Millisecond*200 {
-			t.Fatalf("The timeout wasn't set correctly: %q", p.network.timeout.String())
+		if p.Network.timeout != time.Millisecond*200 {
+			t.Fatalf("The timeout wasn't set correctly: %q", p.Network.timeout.String())
 		}
 		for i := 0; i < 2; i++ {
 			if err := p.RunNext(); err != nil {
 				t.Fatalf("Expected no error, instead got %v for %d's instruction", err, i)
 			}
 		}
-		if p.network.port != "42001" {
-			t.Fatalf("The port wasn't set correctly: %q", p.network.port)
+		if p.Network.port != "42001" {
+			t.Fatalf("The port wasn't set correctly: %q", p.Network.port)
 		}
 		if err := p.RunNext(); err != nil {
 			t.Fatalf("Expected no error, instead got %v for last instruction", err)
 		}
-		if p.memory.Get() != 1 {
-			t.Fatalf("Expected the send to fail and leave a non zero value in memory, instead got %d", p.memory.Get())
+		if p.Memory.Get() != 1 {
+			t.Fatalf("Expected the send to fail and leave a non zero value in memory, instead got %d", p.Memory.Get())
 		}
 		if err := p.RunNext(); err != nil {
 			t.Fatalf("Expected no error, instead got %v for last instruction", err)
 		}
-		if p.memory.Get() != 0 {
-			t.Fatalf("Expected the receive to fail and leave a zero value in memory, instead got %d", p.memory.Get())
+		if p.Memory.Get() != 0 {
+			t.Fatalf("Expected the receive to fail and leave a zero value in memory, instead got %d", p.Memory.Get())
 		}
 		if err := p.RunNext(); err != ErrProgramDone {
 			t.Fatalf("Expected ErrProgramDone, instead got %v for last instruction", err)
